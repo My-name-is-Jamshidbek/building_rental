@@ -1,0 +1,196 @@
+{% extends 'admin/base.html' %}
+{% load dict_extras %}
+{% block title %}Trash Records{% endblock title %}
+
+{% block content %}
+<div class="container my-4">
+
+  <!-- Display Django messages -->
+  {% if messages %}
+    {% for message in messages %}
+      <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+        {{ message }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+      </div>
+    {% endfor %}
+  {% endif %}
+
+  <!-- Header -->
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="mb-0">Trash Records</h1>
+    <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#createTrashModal">
+      <i class="bi bi-plus me-1"></i> Add Trash
+    </button>
+  </div>
+
+  <!-- Trash Records Table -->
+  <div class="table-responsive">
+    <table class="table table-striped">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Client</th>
+          <th>Prepayment</th>
+          <th>Total</th>
+          <th>Completed?</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for trash in page_obj %}
+        <tr>
+          <td>{{ trash.id }}</td>
+          <td>{{ trash.client.fullname }}</td>
+          <td>{{ trash.prepayment }}</td>
+          <td>{{ trash.total }}</td>
+          <td>
+            {% if trash.is_end %}
+              <span class="badge bg-success">Yes</span>
+            {% else %}
+              <span class="badge bg-secondary">No</span>
+            {% endif %}
+          </td>
+          <td>
+            <!-- View (Detail) Button -->
+            <a href="{% url 'trash_detail' trash.id %}" class="btn btn-outline-info btn-sm m-1" title="View Trash">
+              <i class="bi bi-gear"></i>
+            </a>
+            <!-- Actions as Individual Buttons, Without Dropdowns -->
+            <div class="d-inline">
+              <!-- Delete Button -->
+              <form method="POST" action="{% url 'trash_delete' trash.id %}" class="d-inline"
+                    onsubmit="return confirm('Are you sure you want to mark this trash record as complete?');">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-outline-danger btn-sm m-1" title="Delete">
+                  <i class="bi bi-trash"></i>
+                </button>
+              </form>
+              <!-- Mark Complete Button -->
+              <form method="POST" action="{% url 'trash_complete' trash.id %}" class="d-inline ms-1"
+                    onsubmit="return confirm('Are you sure you want to mark this trash record as complete?');">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-outline-success btn-sm m-1" title="Mark Complete">
+                  <i class="bi bi-check2-circle"></i>
+                </button>
+              </form>
+            </div>
+          </td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="6" class="text-center">No trash records found.</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Pagination -->
+  <nav>
+    <ul class="pagination justify-content-center">
+      {% if page_obj.has_previous %}
+      <li class="page-item">
+        <a class="page-link" href="?page={{ page_obj.previous_page_number }}" aria-label="Previous">&laquo;</a>
+      </li>
+      {% else %}
+      <li class="page-item disabled">
+        <span class="page-link">&laquo;</span>
+      </li>
+      {% endif %}
+      {% for num in page_obj.paginator.page_range %}
+      {% if page_obj.number == num %}
+      <li class="page-item active"><span class="page-link">{{ num }}</span></li>
+      {% else %}
+      <li class="page-item"><a class="page-link" href="?page={{ num }}">{{ num }}</a></li>
+      {% endif %}
+      {% endfor %}
+      {% if page_obj.has_next %}
+      <li class="page-item">
+        <a class="page-link" href="?page={{ page_obj.next_page_number }}" aria-label="Next">&raquo;</a>
+      </li>
+      {% else %}
+      <li class="page-item disabled">
+        <span class="page-link">&raquo;</span>
+      </li>
+      {% endif %}
+    </ul>
+  </nav>
+</div>
+
+<!-- Alternative Create Trash Modal -->
+<div class="modal fade" id="createTrashModal" tabindex="-1" aria-labelledby="createTrashModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <form method="POST" action="{% url 'trash_create' %}">
+        {% csrf_token %}
+        <div class="modal-header">
+          <h5 class="modal-title" id="createTrashModalLabel">Add Trash Record</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <!-- Client Selection: Use a dropdown instead of a separate modal -->
+          <div class="mb-3">
+            <label for="id_client" class="form-label">Client</label>
+            <select name="client" id="id_client" class="form-select" required>
+              <option value="">Select a client</option>
+              {% for client in clients %}
+                <option value="{{ client.id }}">{{ client.fullname }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <!-- Prepayment Input -->
+          <div class="mb-3">
+            <label for="id_prepayment" class="form-label">Prepayment</label>
+            <input type="number" name="prepayment" id="id_prepayment" class="form-control" required>
+          </div>
+          <!-- Note: 'total' and 'is_end' are set by the view; no user input required -->
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-success">Create</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Client Selection Modal -->
+<div class="modal fade" id="clientSelectModal" tabindex="-1" aria-labelledby="clientSelectModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="clientSelectModalLabel">Select Client</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <ul class="list-group">
+          {% for client in clients %}
+            <li class="list-group-item list-group-item-action" style="cursor:pointer;" onclick="selectClient('{{ client.id }}', '{{ client.fullname }}')">
+              {{ client.fullname }}
+            </li>
+          {% empty %}
+            <li class="list-group-item">No clients available.</li>
+          {% endfor %}
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Minimal JavaScript to handle client selection -->
+<script>
+  function selectClient(clientId, clientName) {
+    document.getElementById('id_client').value = clientId;
+    document.getElementById('client_name_display').value = clientName;
+    // Hide the client selection modal instance
+    var clientSelectModalEl = document.getElementById('clientSelectModal');
+    var modalInstance = bootstrap.Modal.getInstance(clientSelectModalEl);
+    if (modalInstance) {
+      modalInstance.hide();
+    } else {
+      // In case instance is not already initialized, create and hide it immediately.
+      new bootstrap.Modal(clientSelectModalEl).hide();
+    }
+  }
+</script>
+{% endblock %}

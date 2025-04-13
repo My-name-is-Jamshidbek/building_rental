@@ -1,0 +1,165 @@
+{% extends 'admin/base.html' %}
+{% load dict_extras %}
+{% load form_tags %}
+{% block title %}Products{% endblock title %}
+
+{% block content %}
+<div class="container my-4">
+  <!-- Display Django Messages -->
+  {% if messages %}
+    {% for message in messages %}
+      <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+        {{ message }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+      </div>
+    {% endfor %}
+  {% endif %}
+
+  <h1 class="mb-4">Products</h1>
+
+  <!-- Button to trigger Create Product Modal -->
+  <div class="d-grid gap-2 d-sm-flex justify-content-sm-end mb-3">
+    <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#createProductModal">
+      <i class="bi bi-plus me-1"></i> Add Product
+    </button>
+  </div>
+
+  <!-- Responsive Products Table -->
+  <div class="table-responsive">
+    <table class="table table-striped align-middle">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Name</th>
+          <th>Price</th>
+          <th>Count</th>
+          <th class="text-center">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for product in page_obj %}
+        <tr>
+          <td>{{ product.id }}</td>
+          <td>{{ product.name }}</td>
+          <td>${{ product.price }}</td>
+          <td>{{ product.count }}</td>
+          <td class="text-center">
+            <!-- Button to trigger Update Product Modal -->
+            <button class="btn btn-primary btn-sm me-1" data-bs-toggle="modal" data-bs-target="#updateProductModal{{ product.id }}" title="Edit">
+              <i class="bi bi-pencil-square"></i>
+            </button>
+            <!-- Delete form with confirmation -->
+            <form method="POST" action="{% url 'product_delete' product.id %}" class="d-inline"
+                  onsubmit="return confirm('Are you sure you want to delete product {{ product.name }}?');">
+              {% csrf_token %}
+              <button type="submit" class="btn btn-danger btn-sm" title="Delete">
+                <i class="bi bi-trash"></i>
+              </button>
+            </form>
+          </td>
+        </tr>
+
+        <!-- Update Product Modal -->
+        <div class="modal fade" id="updateProductModal{{ product.id }}" tabindex="-1" aria-labelledby="updateProductModalLabel{{ product.id }}" aria-hidden="true">
+          <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+            <div class="modal-content">
+              <form method="POST" action="{% url 'product_update' product.id %}">
+                {% csrf_token %}
+                <div class="modal-header">
+                  <h5 class="modal-title" id="updateProductModalLabel{{ product.id }}">Edit Product</h5>
+                  <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                  {% with form=update_forms|get_item:product.id %}
+                    {% for field in form %}
+                      <div class="mb-3">
+                        <label for="{{ field.id_for_label }}" class="form-label">{{ field.label }}</label>
+                        {{ field }}
+                        {% if field.help_text %}
+                          <small class="form-text text-muted">{{ field.help_text }}</small>
+                        {% endif %}
+                        {% for error in field.errors %}
+                          <div class="invalid-feedback d-block">{{ error }}</div>
+                        {% endfor %}
+                      </div>
+                    {% endfor %}
+                  {% endwith %}
+                </div>
+                <div class="modal-footer">
+                  <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                  <button type="submit" class="btn btn-primary">Save Changes</button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Pagination -->
+  <nav aria-label="Page navigation">
+    <ul class="pagination justify-content-center">
+      {% if page_obj.has_previous %}
+        <li class="page-item">
+          <a class="page-link" href="?page={{ page_obj.previous_page_number }}" aria-label="Previous">
+            <span aria-hidden="true">&laquo;</span>
+          </a>
+        </li>
+      {% else %}
+        <li class="page-item disabled">
+          <span class="page-link">&laquo;</span>
+        </li>
+      {% endif %}
+
+      {% for num in page_obj.paginator.page_range %}
+        {% if page_obj.number == num %}
+          <li class="page-item active">
+            <span class="page-link">{{ num }}</span>
+          </li>
+        {% else %}
+          <li class="page-item">
+            <a class="page-link" href="?page={{ num }}">{{ num }}</a>
+          </li>
+        {% endif %}
+      {% endfor %}
+
+      {% if page_obj.has_next %}
+        <li class="page-item">
+          <a class="page-link" href="?page={{ page_obj.next_page_number }}" aria-label="Next">
+            <span aria-hidden="true">&raquo;</span>
+          </a>
+        </li>
+      {% else %}
+        <li class="page-item disabled">
+          <span class="page-link">&raquo;</span>
+        </li>
+      {% endif %}
+    </ul>
+  </nav>
+</div>
+
+<!-- Create Product Modal -->
+<div class="modal fade" id="createProductModal" tabindex="-1" aria-labelledby="createProductModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <form method="POST" action="{% url 'product_create' %}">
+        {% csrf_token %}
+        <div class="modal-header">
+          <h5 class="modal-title" id="createProductModalLabel">Add Product</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          {% include 'admin/core/product_form_fields.html' with form=create_form %}
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-success">Create Product</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

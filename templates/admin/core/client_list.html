@@ -1,0 +1,141 @@
+{% extends 'admin/base.html' %}
+{% load dict_extras %}
+{% block title %}Clients{% endblock title %}
+
+{% block content %}
+<div class="container my-4">
+  <!-- Display Django messages -->
+  {% if messages %}
+    {% for message in messages %}
+      <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+        {{ message }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+      </div>
+    {% endfor %}
+  {% endif %}
+
+  <h1 class="mb-4">Clients</h1>
+  <!-- Button to trigger Create Client Modal -->
+  <div class="d-grid gap-2 d-md-flex justify-content-md-end mb-3">
+    <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#createClientModal">
+      <i class="bi bi-plus me-1"></i> Add Client
+    </button>
+  </div>
+
+  <!-- Clients table in a responsive container -->
+  <div class="table-responsive">
+    <table class="table table-striped align-middle">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Full Name</th>
+          <th>Phone</th>
+          <th>Description</th>
+          <th class="text-center">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for client in page_obj %}
+          <tr>
+            <td>{{ client.id }}</td>
+            <td>{{ client.fullname }}</td>
+            <td>{{ client.phone }}</td>
+            <td>{{ client.desc }}</td>
+            <td class="text-center">
+              <!-- Edit Button -->
+              <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#updateClientModal{{ client.id }}" title="Edit">
+                <i class="bi bi-pencil-square"></i>
+              </button>
+              <!-- Delete Button -->
+              <button class="btn btn-danger btn-sm" data-bs-toggle="modal" data-bs-target="#deleteClientModal{{ client.id }}" title="Delete">
+                <i class="bi bi-trash"></i>
+              </button>
+            </td>
+          </tr>
+
+          <!-- Update Client Modal -->
+          <div class="modal fade" id="updateClientModal{{ client.id }}" tabindex="-1" aria-labelledby="updateClientModalLabel{{ client.id }}" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+              <div class="modal-content">
+                <form method="POST" action="{% url 'client_update' client.id %}">
+                  {% csrf_token %}
+                  <div class="modal-header">
+                    <h5 class="modal-title" id="updateClientModalLabel{{ client.id }}">Edit Client</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                  </div>
+                  <div class="modal-body">
+                    {% with update_form=update_forms|get_item:client.id %}
+                      {% include 'admin/core/client_form_fields.html' with form=update_form %}
+                    {% endwith %}
+                  </div>
+                  <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save Changes</button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          </div>
+
+          <!-- Delete Client Modal -->
+          <div class="modal fade" id="deleteClientModal{{ client.id }}" tabindex="-1" aria-labelledby="deleteClientModalLabel{{ client.id }}" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered">
+              <div class="modal-content">
+                <form method="POST" action="{% url 'client_delete' client.id %}">
+                  {% csrf_token %}
+                  <div class="modal-header">
+                    <h5 class="modal-title" id="deleteClientModalLabel{{ client.id }}">Delete Client</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                  </div>
+                  <div class="modal-body">
+                    Are you sure you want to delete client "{{ client.fullname }}"?
+                  </div>
+                  <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-danger">Delete</button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          </div>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Pagination -->
+  <nav>
+    <ul class="pagination justify-content-center">
+      {% if page_obj.has_previous %}
+        <li class="page-item">
+          <a class="page-link" href="?page={{ page_obj.previous_page_number }}" aria-label="Previous">
+            <span aria-hidden="true">&laquo;</span>
+          </a>
+        </li>
+      {% else %}
+        <li class="page-item disabled">
+          <span class="page-link">&laquo;</span>
+        </li>
+      {% endif %}
+      {% for num in page_obj.paginator.page_range %}
+        {% if page_obj.number == num %}
+          <li class="page-item active"><span class="page-link">{{ num }}</span></li>
+        {% else %}
+          <li class="page-item"><a class="page-link" href="?page={{ num }}">{{ num }}</a></li>
+        {% endif %}
+      {% endfor %}
+      {% if page_obj.has_next %}
+        <li class="page-item">
+          <a class="page-link" href="?page={{ page_obj.next_page_number }}" aria-label="Next">
+            <span aria-hidden="true">&raquo;</span>
+          </a>
+        </li>
+      {% else %}
+        <li class="page-item disabled">
+          <span class="page-link">&raquo;</span>
+        </li>
+      {% endif %}
+    </ul>
+  </nav>
+</div>
+{% endblock %}

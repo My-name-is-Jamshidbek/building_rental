@@ -1,0 +1,121 @@
+{% extends 'admin/base.html' %}
+{% block title %}Item Trash - Items{% endblock title %}
+{% block content %}
+<div class="container my-4">
+  <h1 class="mb-4">Item Trash - Items</h1>
+
+  <!-- Form wrapping the dynamic cards -->
+  <form method="POST" action="{% url 'trash_detail' trash.pk %}">
+    {% csrf_token %}
+    <!-- Container for Dynamic Cards -->
+    <div id="cards-container">
+      <!-- Default Card -->
+      <div class="card mb-3 dynamic-card">
+        <div class="card-header">
+          <button type="button" class="btn-close remove-card" aria-label="Remove"></button>
+        </div>
+        <div class="card-body">
+          <div class="row">
+            <!-- Unified Item Select -->
+            <div class="col-md-7">
+              <label class="form-label">Item</label>
+              <select name="item[]" class="form-select" required>
+                <option value="">Select Item</option>
+                <optgroup label="Products">
+                  {% for product in products %}
+                    <option value="product_{{ product.id }}">
+                      {{ product.name }} | Price: ${{ product.price }} | Available: {{ product.count }}
+                    </option>
+                  {% endfor %}
+                </optgroup>
+                <optgroup label="Product Molds">
+                  {% for mold in productmolds %}
+                    <option value="mold_{{ mold.id }}">
+                      Mold {{ mold.length }} | ${{ mold.price }} | Count: {{ mold.count }}
+                    </option>
+                  {% endfor %}
+                </optgroup>
+              </select>
+            </div>
+            <!-- Quantity Input -->
+            <div class="col-md-5">
+              <label class="form-label">Quantity</label>
+              <input type="number" name="quantity[]" class="form-control" min="1" placeholder="Qty" required>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Plus Button to Add New Card -->
+    <button type="button" id="add-card-button" class="btn btn-primary mb-3">
+      <i class="bi bi-plus"></i> Add New Item
+    </button>
+
+    <!-- Submit Button for the form -->
+    <button type="submit" class="btn btn-success mb-3">Save All Items</button>
+  </form>
+</div>
+
+<!-- Hidden Card Template for Cloning -->
+<div id="card-template" style="display: none;">
+  <div class="card mb-3 dynamic-card">
+    <div class="card-header">
+      <button type="button" class="btn-close remove-card" aria-label="Remove"></button>
+    </div>
+    <div class="card-body">
+      <div class="row">
+        <!-- Unified Item Select -->
+        <div class="col-md-7">
+          <label class="form-label">Item</label>
+          <select name="item[]" class="form-select" required>
+            <option value="">Select Item</option>
+            <optgroup label="Products">
+              {% for product in products %}
+                <option value="product_{{ product.id }}">
+                  {{ product.name }} | Price: ${{ product.price }} | Available: {{ product.count }}
+                </option>
+              {% endfor %}
+            </optgroup>
+            <optgroup label="Product Molds">
+              {% for mold in productmolds %}
+                <option value="mold_{{ mold.id }}">
+                  Mold {{ mold.length }} | ${{ mold.price }} | Count: {{ mold.count }}
+                </option>
+              {% endfor %}
+            </optgroup>
+          </select>
+        </div>
+        <!-- Quantity Input -->
+        <div class="col-md-5">
+          <label class="form-label">Quantity</label>
+          <input type="number" name="quantity[]" class="form-control" min="1" placeholder="Qty" required>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- JavaScript to Add and Remove Dynamic Cards -->
+<script>
+  document.addEventListener("DOMContentLoaded", function() {
+    var cardsContainer = document.getElementById('cards-container');
+    var cardTemplate = document.getElementById('card-template').innerHTML;
+    var addButton = document.getElementById('add-card-button');
+
+    addButton.addEventListener('click', function() {
+      cardsContainer.insertAdjacentHTML('beforeend', cardTemplate);
+    });
+
+    // Delegate remove functionality
+    document.addEventListener('click', function(event) {
+      if (event.target && event.target.classList.contains('remove-card')) {
+        var card = event.target.closest('.dynamic-card');
+        if (card) {
+          card.remove();
+        }
+      }
+    });
+  });
+</script>
+{% endblock %}

@@ -1,0 +1,403 @@
+{% extends 'admin/base.html' %}
+{% load calc_tags %}
+{% block title %}Item Trash - Items{% endblock title %}
+
+{% block content %}
+<div class="container my-4">
+  <!-- Overall Trash Data -->
+  <div class="mb-4">
+    <h2>Trash Record #{{ trash.id }}</h2>
+    <p class="fs-6">
+      <strong>Total:</strong> ${{ trash.total|floatformat:2 }}<br>
+      <strong>Created On:</strong> {{ trash.created_at|date:"Y-m-d H:i" }}
+      {% if trash.is_end %}
+         <span class="badge bg-secondary ms-2">This trash is ended.</span>
+      {% endif %}
+    </p>
+  </div>
+
+  <!-- Django Messages -->
+  {% if messages %}
+    {% for message in messages %}
+      <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+        {{ message }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+      </div>
+    {% endfor %}
+  {% endif %}
+
+  <h1 class="mb-4">Previously Added Items</h1>
+  <div class="mb-5">
+    <div class="row">
+      {% if product_histories %}
+        <div class="col-12 col-md-6 mb-3 mb-md-0">
+          <h5 class="mb-3">Products</h5>
+          <div class="table-responsive">
+            <table class="table table-sm table-bordered">
+              <thead>
+                <tr>
+                  <th>Product</th>
+                  <th>Cost/Day</th>
+                  <th>Qty</th>
+                  <th>Started</th>
+                  <th>Completed</th>
+                  <th>Total</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for history in product_histories %}
+                  <tr>
+                    <td>{{ history.product.name }}</td>
+                    <td>${{ history.product.price|floatformat:2 }}</td>
+                    <td>{{ history.count }}</td>
+                    <td>{{ history.start_time|date:"Y-m-d H:i" }}</td>
+                    <td>{% if history.end_time %}{{ history.end_time|date:"Y-m-d H:i" }}{% else %}-{% endif %}</td>
+                    <td>
+                      {% if history.end_time %}
+                        ${{ history|calculate_total|floatformat:2 }}
+                      {% else %}
+                        -
+                      {% endif %}
+                    </td>
+                    <td>
+                      {% if not history.end_time %}
+                        <form method="POST" action="{% url 'product_history_complete' history.id %}" onsubmit="return confirm('Mark this product complete?');" class="d-inline">
+                          {% csrf_token %}
+                          <button type="submit" class="btn btn-sm btn-outline-success" title="Mark Complete">
+                            <i class="bi bi-check2-circle"></i>
+                          </button>
+                        </form>
+                      {% endif %}
+                      <form method="POST" action="{% url 'product_history_delete' history.id %}" onsubmit="return confirm('Delete this product record?');" class="d-inline">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-sm btn-outline-danger" title="Delete">
+                          <i class="bi bi-trash"></i>
+                        </button>
+                      </form>
+                    </td>
+                  </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      {% endif %}
+      {% if product_mold_histories %}
+        <div class="col-12 col-md-6">
+          <h5 class="mb-3">Product Molds</h5>
+          <div class="table-responsive">
+            <table class="table table-sm table-bordered">
+              <thead>
+                <tr>
+                  <th>Mold</th>
+                  <th>Cost/Day</th>
+                  <th>Qty</th>
+                  <th>Started</th>
+                  <th>Completed</th>
+                  <th>Total</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for history in product_mold_histories %}
+                  <tr>
+                    <td>Mold {{ history.product_mold.length }}</td>
+                    <td>${{ history.product_mold.price|floatformat:2 }}</td>
+                    <td>{{ history.count }}</td>
+                    <td>{{ history.start_time|date:"Y-m-d H:i" }}</td>
+                    <td>{% if history.end_time %}{{ history.end_time|date:"Y-m-d H:i" }}{% else %}-{% endif %}</td>
+                    <td>
+                      {% if history.end_time %}
+                        ${{ history|calculate_total|floatformat:2 }}
+                      {% else %}
+                        -
+                      {% endif %}
+                    </td>
+                    <td>
+                      {% if not history.end_time %}
+                        <form method="POST" action="{% url 'productmold_history_complete' history.id %}" onsubmit="return confirm('Mark this mold complete?');" class="d-inline">
+                          {% csrf_token %}
+                          <button type="submit" class="btn btn-sm btn-outline-success" title="Mark Complete">
+                            <i class="bi bi-check2-circle"></i>
+                          </button>
+                        </form>
+                      {% endif %}
+                      <form method="POST" action="{% url 'productmold_history_delete' history.id %}" onsubmit="return confirm('Delete this mold record?');" class="d-inline">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-sm btn-outline-danger" title="Delete">
+                          <i class="bi bi-trash"></i>
+                        </button>
+                      </form>
+                    </td>
+                  </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      {% endif %}
+      {% if not product_histories and not product_mold_histories %}
+        <p class="text-muted">No items have been added yet.</p>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Only show add-new-item form if trash is not ended -->
+  {% if not trash.is_end %}
+  <h3 class="mb-3">Add New Items</h3>
+  <form method="POST" action="{% url 'trash_detail' trash.pk %}" id="item-form">
+    {% csrf_token %}
+    <div id="cards-container">
+      {% if old_items %}
+        {% for old in old_items %}
+          <div class="card mb-3 dynamic-card">
+            <div class="card-header">
+              <button type="button" class="btn-close remove-card" aria-label="Remove"></button>
+            </div>
+            <div class="card-body">
+              <div class="row">
+                <div class="col-12 col-md-7">
+                  <label class="form-label">Item</label>
+                  <select name="item[]" class="form-select item-select" required>
+                    <option value="">Select Item</option>
+                    <optgroup label="Products">
+                      {% for product in products %}
+                        <option value="product_{{ product.id }}"
+                          {% if old.item|slice:"8:" == product.id|stringformat:"s" %}selected{% endif %}
+                          data-available="{{ product|available_product }}">
+                          {{ product.name }} | Price: ${{ product.price|floatformat:2 }} | Available: {{ product|available_product }}
+                        </option>
+                      {% endfor %}
+                    </optgroup>
+                    <optgroup label="Product Molds">
+                      {% for mold in productmolds %}
+                        <option value="mold_{{ mold.id }}"
+                          {% if old.item|slice:"5:" == mold.id|stringformat:"s" %}selected{% endif %}
+                          data-available="{{ mold|available_mold }}">
+                          Mold {{ mold.length }} | ${{ mold.price|floatformat:2 }} | Available: {{ mold|available_mold }}
+                        </option>
+                      {% endfor %}
+                    </optgroup>
+                  </select>
+                </div>
+                <div class="col-12 col-md-5">
+                  <label class="form-label">Quantity</label>
+                  <input type="number" name="quantity[]" class="form-control quantity-input" min="1" placeholder="Qty" value="{{ old.quantity }}" required>
+                </div>
+              </div>
+            </div>
+          </div>
+        {% endfor %}
+      {% else %}
+        <div class="card mb-3 dynamic-card">
+          <div class="card-header">
+            <button type="button" class="btn-close remove-card" aria-label="Remove"></button>
+          </div>
+          <div class="card-body">
+            <div class="row">
+              <div class="col-12 col-md-7">
+                <label class="form-label">Item</label>
+                <select name="item[]" class="form-select item-select" required>
+                  <option value="">Select Item</option>
+                  <optgroup label="Products">
+                    {% for product in products %}
+                      <option value="product_{{ product.id }}" data-available="{{ product|available_product }}">
+                        {{ product.name }} | Price: ${{ product.price|floatformat:2 }} | Available: {{ product|available_product }}
+                      </option>
+                    {% endfor %}
+                  </optgroup>
+                  <optgroup label="Product Molds">
+                    {% for mold in productmolds %}
+                      <option value="mold_{{ mold.id }}" data-available="{{ mold|available_mold }}">
+                        Mold {{ mold.length }} | ${{ mold.price|floatformat:2 }} | Available: {{ mold|available_mold }}
+                      </option>
+                    {% endfor %}
+                  </optgroup>
+                </select>
+              </div>
+              <div class="col-12 col-md-5">
+                <label class="form-label">Quantity</label>
+                <input type="number" name="quantity[]" class="form-control quantity-input" min="1" placeholder="Qty" required>
+              </div>
+            </div>
+          </div>
+        </div>
+      {% endif %}
+    </div>
+
+    <!-- Plus Button -->
+    <button type="button" id="add-card-button" class="btn btn-primary mb-3">
+      <i class="bi bi-plus"></i> Add New Item
+    </button>
+
+    <!-- Finish (Submit) Button -->
+    <button type="submit" id="finish-button" class="btn btn-success mb-3">Save All Items</button>
+  </form>
+  {% else %}
+    <div class="alert alert-info">This trash record is ended. No new items can be added.</div>
+  {% endif %}
+</div>
+
+<!-- Hidden Card Template for Cloning (Only used if trash is not ended) -->
+{% if not trash.is_end %}
+<div id="card-template" style="display: none;">
+  <div class="card mb-3 dynamic-card">
+    <div class="card-header">
+      <button type="button" class="btn-close remove-card" aria-label="Remove"></button>
+    </div>
+    <div class="card-body">
+      <div class="row">
+        <div class="col-12 col-md-7">
+          <label class="form-label">Item</label>
+          <select name="item[]" class="form-select item-select" required>
+            <option value="">Select Item</option>
+            <optgroup label="Products">
+              {% for product in products %}
+                <option value="product_{{ product.id }}" data-available="{{ product|available_product }}">
+                  {{ product.name }} | Price: ${{ product.price|floatformat:2 }} | Available: {{ product|available_product }}
+                </option>
+              {% endfor %}
+            </optgroup>
+            <optgroup label="Product Molds">
+              {% for mold in productmolds %}
+                <option value="mold_{{ mold.id }}" data-available="{{ mold|available_mold }}">
+                  Mold {{ mold.length }} | ${{ mold.price|floatformat:2 }} | Available: {{ mold|available_mold }}
+                </option>
+              {% endfor %}
+            </optgroup>
+          </select>
+        </div>
+        <div class="col-12 col-md-5">
+          <label class="form-label">Quantity</label>
+          <input type="number" name="quantity[]" class="form-control quantity-input" min="1" placeholder="Qty" required>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+<!-- JavaScript: Attach Event Listeners -->
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+
+  // Update the quantity input's max attribute based on the selected option's data-available.
+  function updateQuantityMax(selectEl) {
+    var selectedOption = selectEl.options[selectEl.selectedIndex];
+    var available = selectedOption.getAttribute('data-available');
+    var row = selectEl.closest('.row');
+    if (row) {
+      var qtyInput = row.querySelector('.quantity-input');
+      if (qtyInput && available) {
+        qtyInput.setAttribute('max', available);
+        if (parseInt(qtyInput.value, 10) > parseInt(available, 10)) {
+          qtyInput.value = available;
+          alert("Maximum available quantity is " + available + ".");
+        }
+      } else if (qtyInput) {
+        qtyInput.removeAttribute('max');
+      }
+    }
+  }
+
+  // Check that the quantity does not exceed the maximum.
+  function checkQuantityInput(qtyInput) {
+    var max = qtyInput.getAttribute('max');
+    if (max && parseInt(qtyInput.value, 10) > parseInt(max, 10)) {
+      qtyInput.value = max;
+      alert("Maximum available quantity is " + max + ".");
+    }
+  }
+
+  // Check for duplicate item selections.
+  function checkForDuplicates() {
+    var selects = document.querySelectorAll('.item-select');
+    var seen = {};
+    var duplicateFound = false;
+    selects.forEach(function(select) {
+      var val = select.value;
+      if (val) {
+        if (seen[val]) {
+          duplicateFound = true;
+        } else {
+          seen[val] = true;
+        }
+      }
+    });
+    var finishBtn = document.getElementById('finish-button');
+    if (duplicateFound) {
+      finishBtn.disabled = true;
+      finishBtn.title = "Duplicate items selected. Please choose unique items.";
+    } else {
+      finishBtn.disabled = false;
+      finishBtn.title = "";
+    }
+  }
+
+  // Attach event listeners to an item select.
+  function attachSelectListener(selectEl) {
+    selectEl.addEventListener('change', function() {
+      updateQuantityMax(selectEl);
+      checkForDuplicates();
+    });
+    updateQuantityMax(selectEl);
+  }
+
+  // Attach event listeners to a quantity input.
+  function attachQuantityListener(qtyInput) {
+    qtyInput.addEventListener('input', function() {
+      checkQuantityInput(qtyInput);
+    });
+  }
+
+  // Attach listeners on existing dynamic cards.
+  document.querySelectorAll('.dynamic-card .item-select').forEach(function(sel) {
+    attachSelectListener(sel);
+  });
+  document.querySelectorAll('.dynamic-card .quantity-input').forEach(function(inp) {
+    attachQuantityListener(inp);
+  });
+  checkForDuplicates();
+
+  // Plus button: add a new dynamic card.
+  var cardsContainer = document.getElementById('cards-container');
+  var cardTemplate = document.getElementById('card-template').innerHTML;
+  var addButton = document.getElementById('add-card-button');
+  addButton.addEventListener('click', function() {
+    cardsContainer.insertAdjacentHTML('beforeend', cardTemplate);
+    var newCard = cardsContainer.lastElementChild;
+    var newSelect = newCard.querySelector('.item-select');
+    var newQtyInput = newCard.querySelector('.quantity-input');
+    if (newSelect) {
+      attachSelectListener(newSelect);
+    }
+    if (newQtyInput) {
+      attachQuantityListener(newQtyInput);
+    }
+    checkForDuplicates();
+  });
+
+  // Delegate removal: if the remove button is clicked, remove its dynamic card.
+  document.addEventListener('click', function(e) {
+    if (e.target && e.target.classList.contains('remove-card')) {
+      var card = e.target.closest('.dynamic-card');
+      if (card) {
+        card.remove();
+      }
+      checkForDuplicates();
+    }
+  });
+
+  // On finish button click, re-check duplicates.
+  var finishButton = document.getElementById('finish-button');
+  finishButton.addEventListener('click', function(e) {
+    checkForDuplicates();
+    if (finishButton.disabled) {
+      e.preventDefault();
+      alert("Duplicate items selected. Please ensure that each item is unique before submitting.");
+    }
+  });
+});
+</script>
+{% endblock %}

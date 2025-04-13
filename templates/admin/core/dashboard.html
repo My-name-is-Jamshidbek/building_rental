@@ -1,0 +1,208 @@
+{% extends 'admin/base.html' %}
+{% block title %}Dashboard{% endblock %}
+
+{% block content %}
+<div class="container-fluid my-4">
+    <!-- Messages -->
+    {% if messages %}
+        {% for message in messages %}
+        <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+        {% endfor %}
+    {% endif %}
+
+    <!-- Summary Cards -->
+    <div class="row g-3">
+        <div class="col-md-3 col-sm-6">
+            <div class="card bg-primary text-white shadow">
+                <div class="card-body">
+                    <h5>Total Transactions</h5>
+                    <h3>{{ total_trash }}</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 col-sm-6">
+            <div class="card bg-success text-white shadow">
+                <div class="card-body">
+                    <h5>Completed</h5>
+                    <h3>{{ total_completed }}</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 col-sm-6">
+            <div class="card bg-info text-white shadow">
+                <div class="card-body">
+                    <h5>Revenue</h5>
+                    <h3>${{ total_revenue|floatformat:2 }}</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 col-sm-6">
+            <div class="card bg-warning text-dark shadow">
+                <div class="card-body">
+                    <h5>Prepayment</h5>
+                    <h3>${{ total_prepayment|floatformat:2 }}</h3>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Transactions & Clients -->
+    <div class="row mt-4">
+        <div class="col-md-8">
+            <div class="card shadow-sm">
+                <div class="card-header bg-secondary text-white">
+                    Recent Transactions
+                </div>
+                <div class="table-responsive">
+                    <table class="table align-middle mb-0">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Client</th>
+                                <th>Total</th>
+                                <th>Status</th>
+                                <th>Date</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for trash in recent_transactions %}
+                            <tr>
+                                <td>{{ trash.id }}</td>
+                                <td>{{ trash.client.fullname }}</td>
+                                <td>${{ trash.total|floatformat:2 }}</td>
+                                <td>
+                                    {% if trash.is_end %}
+                                    <span class="badge bg-success">Completed</span>
+                                    {% else %}
+                                    <span class="badge bg-warning">Pending</span>
+                                    {% endif %}
+                                </td>
+                                <td>{{ trash.created_at|date:"Y-m-d" }}</td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="5" class="text-center">No recent transactions.</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="card shadow-sm">
+                <div class="card-header bg-secondary text-white">
+                    Recent Clients
+                </div>
+                <ul class="list-group list-group-flush">
+                    {% for client in recent_clients %}
+                    <li class="list-group-item">
+                        {{ client.fullname }} <small class="text-muted">({{ client.phone }})</small>
+                    </li>
+                    {% empty %}
+                    <li class="list-group-item">No recent clients.</li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <!-- Product & Mold Summary -->
+    <div class="row mt-4">
+        <div class="col-md-4">
+            <div class="card shadow-sm text-center">
+                <div class="card-body">
+                    <h5>Clients</h5>
+                    <h2>{{ client_count }}</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card shadow-sm text-center">
+                <div class="card-body">
+                    <h5>Products</h5>
+                    <h2>{{ product_count }}</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card shadow-sm text-center">
+                <div class="card-body">
+                    <h5>Product Molds</h5>
+                    <h2>{{ productmold_count }}</h2>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Revenue Charts -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card shadow-sm">
+                <div class="card-header bg-dark text-white">
+                    Revenue Statistics
+                </div>
+                <div class="card-body">
+                    <canvas id="revenueChart"></canvas>
+                </div>
+                <div class="card-footer">
+                    <button class="btn btn-outline-primary btn-sm" onclick="updateChart('daily')">Daily</button>
+                    <button class="btn btn-outline-secondary btn-sm" onclick="updateChart('weekly')">Weekly</button>
+                    <button class="btn btn-outline-success btn-sm" onclick="updateChart('monthly')">Monthly</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Chart.js CDN -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<script>
+const ctx = document.getElementById('revenueChart').getContext('2d');
+
+const labels = {{ chart_labels|safe }};
+const dailyData = {{ daily_revenue_data|safe }};
+const weeklyData = {{ weekly_revenue_data|safe }};
+const monthlyData = {{ monthly_revenue_data|safe }};
+
+let revenueChart = new Chart(ctx, {
+    type: 'line',
+    data: {
+        labels: labels,
+        datasets: [{
+            label: 'Revenue',
+            data: dailyData,
+            borderColor: 'rgba(54, 162, 235, 1)',
+            backgroundColor: 'rgba(54, 162, 235, 0.2)',
+            fill: true,
+            tension: 0.3
+        }]
+    },
+    options: {
+        responsive: true,
+        plugins: {
+            legend: { display: true, position: 'top' },
+        },
+        scales: {
+            y: { beginAtZero: true }
+        }
+    }
+});
+
+function updateChart(period) {
+    let newData;
+    if (period === 'daily') newData = dailyData;
+    else if (period === 'weekly') newData = weeklyData;
+    else newData = monthlyData;
+
+    revenueChart.data.datasets[0].data = newData;
+    revenueChart.data.datasets[0].label = 'Revenue (' + period.charAt(0).toUpperCase() + period.slice(1) + ')';
+    revenueChart.update();
+}
+</script>
+{% endblock %}
